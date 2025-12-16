@@ -1,0 +1,18 @@
+{
+  "title": "Capacity Stress Test",
+  "users": [
+    {"Name": "U1", "Priority": "High",   "X": 10, "Y": 9,  "Device": "Laptop"},
+    {"Name": "U2", "Priority": "High",   "X": 11, "Y": 12, "Device": "Laptop"},
+    {"Name": "U3", "Priority": "Medium", "X": 12, "Y": 11, "Device": "Smartphone"},
+    {"Name": "U4", "Priority": "Low",    "X": 13, "Y": 10, "Device": "Tablet"}
+  ],
+  "aps": [
+    {"Name": "AP1", "Capacity": 2, "Channel": 1, "X": 11, "Y": 10},
+    {"Name": "AP2", "Capacity": 2, "Channel": 11, "X": 30, "Y": 30}
+  ],
+  "settings": {
+    "WifiBand": "2.4 GHz",
+    "EnvironmentType": "Indoor",
+    "IncludePowerConsumption": false
+  }
+}

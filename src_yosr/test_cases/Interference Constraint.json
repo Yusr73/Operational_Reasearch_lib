@@ -1,0 +1,19 @@
+{
+  "title": "Interference Constraint Test",
+  "users": [
+    {"Name": "U1", "Priority": "High",   "X": 5,  "Y": 5,  "Device": "Laptop"},
+    {"Name": "U2", "Priority": "High",   "X": 6,  "Y": 5,  "Device": "Smartphone"},
+    {"Name": "U3", "Priority": "Medium", "X": 7,  "Y": 5,  "Device": "Tablet"},
+    {"Name": "U4", "Priority": "Low",    "X": 20, "Y": 20, "Device": "Laptop"}
+  ],
+  "aps": [
+    {"Name": "AP1", "Capacity": 2, "Channel": 1, "X": 5, "Y": 5},
+    {"Name": "AP2", "Capacity": 2, "Channel": 1, "X": 8, "Y": 5},
+    {"Name": "AP3", "Capacity": 2, "Channel": 11, "X": 20, "Y": 22}
+  ],
+  "settings": {
+    "WifiBand": "2.4 GHz",
+    "EnvironmentType": "Indoor",
+    "IncludePowerConsumption": false
+  }
+}

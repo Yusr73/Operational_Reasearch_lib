@@ -1,0 +1,19 @@
+{
+  "title": "Dense User Cluster",
+  "users": [
+    {"Name": "U1", "Priority": "High", "X": 10, "Y": 10, "Device": "Laptop"},
+    {"Name": "U2", "Priority": "Medium", "X": 11, "Y": 11, "Device": "Smartphone"},
+    {"Name": "U3", "Priority": "Low", "X": 12, "Y": 10, "Device": "Tablet"},
+    {"Name": "U4", "Priority": "High", "X": 11, "Y": 12, "Device": "Smartphone"},
+    {"Name": "U5", "Priority": "Medium", "X": 10, "Y": 11, "Device": "Laptop"}
+  ],
+  "aps": [
+    {"Name": "AP1", "Capacity": 3, "Channel": 1, "X": 11, "Y": 11},
+    {"Name": "AP2", "Capacity": 2, "Channel": 6, "X": 15, "Y": 10}
+  ],
+  "settings": {
+    "WifiBand": "2.4 GHz",
+    "EnvironmentType": "Indoor",
+    "IncludePowerConsumption": false
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "title": "Balanced Load Example",
+  "users": [
+    {"Name": "U1", "Priority": "High", "X": 10, "Y": 10, "Device": "Laptop"},
+    {"Name": "U2", "Priority": "Medium", "X": 12, "Y": 12, "Device": "Smartphone"},
+    {"Name": "U3", "Priority": "Low", "X": 14, "Y": 10, "Device": "Tablet"},
+    {"Name": "U4", "Priority": "Medium", "X": 16, "Y": 12, "Device": "Laptop"},
+    {"Name": "U5", "Priority": "High", "X": 18, "Y": 10, "Device": "Smartphone"},
+    {"Name": "U6", "Priority": "Low", "X": 20, "Y": 12, "Device": "Tablet"},
+    {"Name": "U7", "Priority": "Medium", "X": 22, "Y": 10, "Device": "Laptop"},
+    {"Name": "U8", "Priority": "High", "X": 24, "Y": 12, "Device": "Smartphone"},
+    {"Name": "U9", "Priority": "Low", "X": 26, "Y": 10, "Device": "Tablet"},
+    {"Name": "U10", "Priority": "Medium", "X": 28, "Y": 12, "Device": "Laptop"},
+    {"Name": "U11", "Priority": "High", "X": 30, "Y": 10, "Device": "Smartphone"},
+    {"Name": "U12", "Priority": "Low", "X": 32, "Y": 12, "Device": "Tablet"}
+  ],
+  "aps": [
+    {"Name": "AP1", "Capacity": 4, "Channel": 1, "X": 12, "Y": 11},
+    {"Name": "AP2", "Capacity": 4, "Channel": 6, "X": 20, "Y": 11},
+    {"Name": "AP3", "Capacity": 4, "Channel": 11, "X": 28, "Y": 11}
+  ],
+  "settings": {
+    "WifiBand": "2.4 GHz",
+    "EnvironmentType": "Indoor",
+    "IncludePowerConsumption": true
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "title": "Infeasible Example",
+  "users": [
+    {"Name": "U1", "Priority": "High",   "X": 100, "Y": 100, "Device": "Laptop"},
+    {"Name": "U2", "Priority": "Medium", "X": 110, "Y": 110, "Device": "Smartphone"}
+  ],
+  "aps": [
+    {"Name": "AP1", "Capacity": 1, "Channel": 1, "X": 0, "Y": 0}
+  ],
+  "settings": {
+    "WifiBand": "2.4 GHz",
+    "EnvironmentType": "Indoor",
+    "IncludePowerConsumption": false
+  }
+}

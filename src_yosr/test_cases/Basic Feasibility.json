@@ -1,0 +1,17 @@
+{
+  "title": "Basic Feasibility",
+  "users": [
+    {"Name": "U1", "Priority": "High",   "X": 10, "Y": 12, "Device": "Laptop"},
+    {"Name": "U2", "Priority": "Medium", "X": 15, "Y": 14, "Device": "Smartphone"},
+    {"Name": "U3", "Priority": "Low",    "X": 20, "Y": 11, "Device": "Tablet"}
+  ],
+  "aps": [
+    {"Name": "AP1", "Capacity": 2, "Channel": 1, "X": 12, "Y": 12},
+    {"Name": "AP2", "Capacity": 2, "Channel": 6, "X": 22, "Y": 12}
+  ],
+  "settings": {
+    "WifiBand": "2.4 GHz",
+    "EnvironmentType": "Indoor",
+    "IncludePowerConsumption": false
+  }
+}
