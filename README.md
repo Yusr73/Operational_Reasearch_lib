@@ -9,14 +9,14 @@ Operational_Reasearch_lib/
 ├── library.py              # Main dashboard application
 ├── src_yosr/              # Problem 2: Network Assignment (Yosr)
 ├── src_adem/              # Problem 4: Vertex Cover (Adem) ✓
-├── src_nour/              # Problem 1: (Nour)
+├── src_nour/              # Problem 1: Planning of road and railway routes(Nour)
 ├── src_nour_elhouda/      # Problem 3: (Nour Elhouda)
 └── src_slim/              # Problem 5: (Slim)
 ```
 
 ## Problems
 
-1. **Problem 1**: Planning of road and railway routes to be added
+1. **Problem 1**: Planning of road and railway routes
 2. **Problem 2**: Assign connections without interference (Yosr) ✓
 3. **Problem 3**: Optimization of fund transfers between banks/currencies
 4. **Problem 4**: Determine the minimal number of monitoring nodes required (Adem) ✓
@@ -93,6 +93,7 @@ python3 test_adem_integration.py
 ```
 
 ## Contributors
+- Nour: Problem 1 (Planning of road and railway routes)
 - Yosr: Problem 2 (Network Assignment)
 - Adem: Problem 4 (Surveillance Network / Vertex Cover)
 - [Add other contributors]
