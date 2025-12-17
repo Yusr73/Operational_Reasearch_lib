@@ -8,7 +8,7 @@ Created on Mon Dec  8 08:29:44 2025
 #!/usr/bin/env python3
 """
 Point d'entrée principal de l'application d'optimisation alimentaire.
-Projet RO - INSA
+
 """
 
 import sys

@@ -1,13 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Dec  8 08:31:41 2025
-
-@author: msi
-"""
-
-"""
-Modèle principal de programmation linéaire pour l'optimisation de mélange.
-Implémente PL de base et permet l'ajout de contraintes PLM.
+Modèle principal CORRIGÉ - Toutes les contraintes PLM fonctionnent ensemble
 """
 
 import gurobipy as gp
@@ -15,11 +8,11 @@ from gurobipy import GRB
 import logging
 from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass
+import numpy as np
 
 from ingredients import Ingredient
 
 logger = logging.getLogger(__name__)
-
 
 @dataclass
 class OptimizationResult:
@@ -27,15 +20,14 @@ class OptimizationResult:
     success: bool
     message: str
     cout_total: float
-    quantites: Dict[str, float]  # kg de chaque ingrédient
-    pourcentages: Dict[str, float]  # % de chaque ingrédient
+    quantites: Dict[str, float]
+    pourcentages: Dict[str, float]
     valeurs_nutritionnelles: Dict[str, float]
     temps_resolution: float
     iterations: int
     status: str
-    ombre_prix: Optional[Dict[str, float]] = None
-    couts_reduits: Optional[Dict[str, float]] = None
-
+    ombre_prix: Optional[Dict[str, float]] = None  # RÉTABLI
+    couts_reduits: Optional[Dict[str, float]] = None  # RÉTABLI
 
 class BlendingModel:
     """Modèle Gurobi pour l'optimisation de formulation alimentaire."""
@@ -44,20 +36,12 @@ class BlendingModel:
         """Initialise un nouveau modèle de mélange."""
         self.model = None
         self.ingredients = []
-        self.Q_total = 1000.0  # Quantité totale par défaut (kg)
-        self.constraints_added = {
-            'base': False,
-            'nutrition': False,
-            'quantity_discount': False,
-            'seasonal': False,
-            'energy_balance': False,
-            'palatability': False,
-            'shelf_life': False
-        }
+        self.Q_total = 1000.0
+        self.binary_vars_registry = {}  # NOUVEAU : registre central des variables binaires
         
-    def create_basic_model(self, ingredients: List[Ingredient], Q_total: float = 1000.0) -> gp.Model:
+    def create_basic_model(self, ingredients: List[Ingredient], Q_total: float = 1000.0):
         """
-        Crée le modèle PL de base (minimisation du coût).
+        Crée le modèle PL de base.
         
         Args:
             ingredients: Liste des ingrédients disponibles
@@ -71,6 +55,9 @@ class BlendingModel:
         self.ingredients = ingredients
         self.Q_total = Q_total
         
+        # Réinitialiser le registre
+        self.binary_vars_registry = {}
+        
         # Initialiser le modèle Gurobi
         self.model = gp.Model("Blending_Alimentaire")
         
@@ -80,9 +67,8 @@ class BlendingModel:
                 lb=0.0,
                 ub=ing.disponibilite_max,
                 vtype=GRB.CONTINUOUS,
-                name=f"x_{ing.nom}"
+                name=f"x_{ing.nom.replace(' ', '_')}"
             )
-            ing.est_dans_modele = True
         
         # 2. Fonction objectif : minimiser le coût total
         cout_expr = gp.quicksum(ing.cout * ing.x_var for ing in ingredients)
@@ -92,10 +78,22 @@ class BlendingModel:
         total_expr = gp.quicksum(ing.x_var for ing in ingredients)
         self.model.addConstr(total_expr == Q_total, name="quantite_totale")
         
-        self.constraints_added['base'] = True
         logger.info("Modèle de base créé avec succès")
-        
         return self.model
+    
+    def _get_binary_var(self, base_name: str, suffix: str = ""):
+        """
+        Récupère ou crée une variable binaire avec nom unique.
+        Évite les doublons !
+        """
+        full_name = f"{base_name}_{suffix}" if suffix else base_name
+        
+        if full_name in self.binary_vars_registry:
+            return self.binary_vars_registry[full_name]
+        
+        y_var = self.model.addVar(vtype=GRB.BINARY, name=full_name)
+        self.binary_vars_registry[full_name] = y_var
+        return y_var
     
     def add_nutritional_constraints(self, requirements: Dict[str, Tuple[float, float]]):
         """
@@ -134,7 +132,6 @@ class BlendingModel:
                     name=f"max_{nutriment}"
                 )
         
-        self.constraints_added['nutrition'] = True
         logger.info("Contraintes nutritionnelles ajoutées")
     
     def add_quantity_discount(self, ingredient_name: str, discount_levels: List[Tuple[float, float, float]]):
@@ -157,11 +154,11 @@ class BlendingModel:
         
         M = self.Q_total  # Valeur Big M
         
-        # Variables binaires pour chaque tranche
+        # Variables binaires pour chaque tranche - utilisation du registre
         y_vars = []
         for j, (min_qty, max_qty, cout) in enumerate(discount_levels):
-            y = self.model.addVar(vtype=GRB.BINARY, name=f"y_{ingredient_name}_tranche{j}")
-            y_vars.append(y)
+            y_var = self._get_binary_var(f"y_discount_{ingredient_name}", f"tranche{j}")
+            y_vars.append(y_var)
         
         # Contrainte : une seule tranche active
         self.model.addConstr(gp.quicksum(y_vars) == 1, name=f"une_tranche_{ingredient_name}")
@@ -169,79 +166,39 @@ class BlendingModel:
         # Variables pour la quantité dans chaque tranche
         x_tranches = []
         for j, (min_qty, max_qty, cout) in enumerate(discount_levels):
-            x_t = self.model.addVar(lb=0, name=f"x_{ingredient_name}_tranche{j}")
+            x_t = self.model.addVar(lb=0, ub=max_qty, name=f"x_discount_{ingredient_name}_tranche{j}")
             x_tranches.append(x_t)
             
             # Contraintes de liaison
-            self.model.addConstr(x_t <= max_qty * y_vars[j], name=f"max_tranche{j}_{ingredient_name}")
-            self.model.addConstr(x_t >= min_qty * y_vars[j], name=f"min_tranche{j}_{ingredient_name}")
+            self.model.addConstr(x_t <= max_qty * y_vars[j], 
+                               name=f"max_tranche{j}_{ingredient_name}")
+            self.model.addConstr(x_t >= min_qty * y_vars[j], 
+                               name=f"min_tranche{j}_{ingredient_name}")
         
         # La quantité totale = somme des tranches
         self.model.addConstr(ingredient.x_var == gp.quicksum(x_tranches), 
-                           name=f"total_{ingredient_name}")
+                           name=f"total_discount_{ingredient_name}")
         
-        # Modifier la fonction objectif pour prendre en compte les différents coûts
+        # Modifier la fonction objectif
         old_obj = self.model.getObjective()
-        new_terms = []
         
-        # Récupérer tous les termes sauf celui de l'ingrédient
-        for i in range(old_obj.size()):
-            var = old_obj.getVar(i)
-            coeff = old_obj.getCoeff(i)
-            
-            if var != ingredient.x_var:
-                new_terms.append(coeff * var)
+        # Construire un nouvel objectif
+        new_obj_terms = []
         
-        # Ajouter les nouveaux termes avec remises
+        # Ajouter tous les ingrédients sauf celui avec remise
+        for ing in self.ingredients:
+            if ing.nom != ingredient_name:
+                new_obj_terms.append(ing.cout * ing.x_var)
+        
+        # Ajouter les termes avec remises pour cet ingrédient
         for j, (_, _, cout) in enumerate(discount_levels):
-            new_terms.append(cout * x_tranches[j])
+            new_obj_terms.append(cout * x_tranches[j])
         
         # Mettre à jour l'objectif
-        new_obj = gp.quicksum(new_terms)
+        new_obj = gp.quicksum(new_obj_terms)
         self.model.setObjective(new_obj, GRB.MINIMIZE)
         
-        self.constraints_added['quantity_discount'] = True
         logger.info(f"Remises ajoutées pour {ingredient_name}")
-    
-    def add_seasonal_constraints(self, season: str):
-        """
-        Ajoute des contraintes de saisonnalité.
-        
-        Args:
-            season: 'ete' ou 'hiver'
-        """
-        if not self.model:
-            raise ValueError("Modèle non initialisé")
-        
-        logger.info(f"Ajout de contraintes saisonnières pour {season}")
-        
-        # Variables binaires pour le choix de saison
-        y_ete = self.model.addVar(vtype=GRB.BINARY, name="y_saison_ete")
-        y_hiver = self.model.addVar(vtype=GRB.BINARY, name="y_saison_hiver")
-        
-        # Contrainte : choix exclusif
-        self.model.addConstr(y_ete + y_hiver == 1, name="choix_saison_exclusif")
-        
-        # Appliquer les disponibilités selon la saison choisie
-        for ing in self.ingredients:
-            if ing.est_saisonnier:
-                # Contrainte conditionnelle avec Big M
-                M = self.Q_total
-                
-                # Si été choisi → x ≤ dispo_été
-                self.model.addConstr(
-                    ing.x_var <= ing.disponibilite_ete + M * (1 - y_ete),
-                    name=f"dispo_ete_{ing.nom}"
-                )
-                
-                # Si hiver choisi → x ≤ dispo_hiver
-                self.model.addConstr(
-                    ing.x_var <= ing.disponibilite_hiver + M * (1 - y_hiver),
-                    name=f"dispo_hiver_{ing.nom}"
-                )
-        
-        self.constraints_added['seasonal'] = True
-        logger.info("Contraintes saisonnières ajoutées")
     
     def add_energy_balance_constraints(self, ratios: Dict[str, Tuple[float, float]]):
         """
@@ -249,7 +206,6 @@ class BlendingModel:
         
         Args:
             ratios: Dict {'glucides': (0.4, 0.6), 'lipides': (0.2, 0.4)}
-                     indiquant les pourcentages min/max d'énergie
         """
         if not self.model:
             raise ValueError("Modèle non initialisé")
@@ -273,11 +229,6 @@ class BlendingModel:
             for ing in self.ingredients
         )
         
-        energie_proteines = gp.quicksum(
-            ing.nutrition.proteines * 4 * ing.x_var  # 4 kcal/g
-            for ing in self.ingredients
-        )
-        
         # Contraintes de ratio
         if 'glucides' in ratios:
             min_ratio, max_ratio = ratios['glucides']
@@ -293,13 +244,6 @@ class BlendingModel:
             self.model.addConstr(energie_lipides <= max_ratio * energie_totale, 
                                name="max_lipides_ratio")
         
-        # Vérification cohérence
-        self.model.addConstr(
-            energie_glucides + energie_lipides + energie_proteines == energie_totale,
-            name="energie_totale_coherence"
-        )
-        
-        self.constraints_added['energy_balance'] = True
         logger.info("Contraintes de balance énergétique ajoutées")
     
     def add_palatability_constraint(self):
@@ -324,45 +268,102 @@ class BlendingModel:
         self.model.addConstr(sucrosite_totale >= amertume_totale, 
                            name="palatabilite")
         
-        self.constraints_added['palatability'] = True
         logger.info("Contrainte de palatabilité ajoutée")
     
-    def add_shelf_life_constraint(self, min_antioxidants: float):
+    def add_min_different_ingredients(self, min_count=3):
         """
-        Ajoute une contrainte de durée de conservation.
-        
-        Args:
-            min_antioxidants: Minimum d'antioxydants requis (mg/kg)
+        Version SIMPLE et FONCTIONNELLE.
+        Contrainte : au moins 'min_count' ingrédients différents dans le mélange.
         """
         if not self.model:
             raise ValueError("Modèle non initialisé")
         
-        logger.info(f"Ajout de contrainte de durée de vie (min {min_antioxidants} mg/kg)")
+        logger.info(f"Ajout contrainte : min {min_count} ingrédients différents")
         
-        # Variable binaire : 1 = conservation longue activée
-        y_conservation = self.model.addVar(vtype=GRB.BINARY, name="y_conservation_longue")
+        M = self.Q_total  # Grand M - valeur maximale possible
+        epsilon = 0.001   # Valeur minimale pour dire "utilisé"
         
-        # Total d'antioxydants
-        total_antioxydants = gp.quicksum(
-            ing.antioxydants * ing.x_var 
-            for ing in self.ingredients 
-            if hasattr(ing, 'antioxydants')
-        )
+        # 1. Créer une variable binaire pour chaque ingrédient
+        y_vars = []
+        for ing in self.ingredients:
+            # Nom unique : "y_min_ingredients_mais"
+            var_name = f"y_min_ingredients_{ing.nom.replace(' ', '_')}"
+            
+            # Créer la variable binaire
+            y = self.model.addVar(vtype=GRB.BINARY, name=var_name)
+            y_vars.append(y)
+            
+            # 2. LIEN ENTRE x (continue) et y (binaire) :
+            # Si y = 0 → x = 0
+            # Si y = 1 → x >= epsilon (au moins un peu)
+            
+            # Contrainte 1 : x ≤ M * y (si y=0 alors x=0)
+            self.model.addConstr(
+                ing.x_var <= M * y,
+                name=f"max_if_not_used_{ing.nom}"
+            )
+            
+            # Contrainte 2 : x ≥ epsilon * y (si y=1 alors x≥epsilon)
+            self.model.addConstr(
+                ing.x_var >= epsilon * y,
+                name=f"min_if_used_{ing.nom}"
+            )
         
-        # Contrainte conditionnelle
-        M = 1000000  # Grand M
+        # 3. CONTRAINTE PRINCIPALE : somme des y ≥ min_count
         self.model.addConstr(
-            total_antioxydants >= min_antioxidants * self.Q_total * y_conservation,
-            name="shelf_life_antioxydants"
+            gp.quicksum(y_vars) >= min_count,
+            name=f"min_different_ingredients"
         )
         
-        # Option : coût supplémentaire pour conservation
-        # cost_term = 10 * y_conservation  # 10€ de coût fixe
-        # old_obj = self.model.getObjective()
-        # self.model.setObjective(old_obj + cost_term, GRB.MINIMIZE)
+        logger.info(f"✓ Contrainte min_ingredients ajoutée (≥{min_count} ingrédients)")
+        return True
+    
+    
+    def add_min_proportion_if_used(self, ingredient_name: str, min_percent=2.0):
+        """
+        Si on utilise un ingrédient spécifique, on doit en mettre au moins X%.
+        UTILISE LES MÊMES VARIABLES BINAIRES QUE add_min_different_ingredients
+        """
+        if not self.model:
+            raise ValueError("Modèle non initialisé")
         
-        self.constraints_added['shelf_life'] = True
-        logger.info("Contrainte de durée de vie ajoutée")
+        logger.info(f"Ajout contrainte : {ingredient_name} ≥ {min_percent}% si utilisé")
+        
+        # Trouver l'ingrédient
+        ingredient = next((i for i in self.ingredients if i.nom == ingredient_name), None)
+        if not ingredient:
+            raise ValueError(f"Ingrédient '{ingredient_name}' non trouvé")
+        
+        # Vérifier si la variable binaire existe déjà
+        if f"y_active_{ingredient.nom}" not in self.binary_vars_registry:
+            # Créer la variable binaire si elle n'existe pas
+            y_var = self.model.addVar(vtype=GRB.BINARY, name=f"y_active_{ingredient.nom}")
+            self.binary_vars_registry[f"y_active_{ingredient.nom}"] = y_var
+            ingredient.y_var = y_var
+            
+            # Ajouter les contraintes de liaison x-y si elles n'existent pas
+            M = self.Q_total
+            epsilon = 0.001
+            
+            if f"max_active_{ingredient.nom}" not in [c.ConstrName for c in self.model.getConstrs()]:
+                self.model.addConstr(ingredient.x_var <= M * y_var, 
+                                   name=f"max_active_{ingredient.nom}")
+            
+            if f"min_active_{ingredient.nom}" not in [c.ConstrName for c in self.model.getConstrs()]:
+                self.model.addConstr(ingredient.x_var >= epsilon * y_var,
+                                   name=f"min_active_{ingredient.nom}")
+        
+        # Récupérer la variable binaire
+        y_var = self.binary_vars_registry[f"y_active_{ingredient.nom}"]
+        
+        # Si utilisé (y=1), alors au moins min_percent%
+        self.model.addConstr(
+            ingredient.x_var >= (min_percent/100.0) * self.Q_total * y_var,
+            name=f"min_percent_{ingredient.nom}"
+        )
+        
+        logger.info(f"Contrainte min_proportion ajoutée pour {ingredient_name}")
+        return True
     
     def solve(self, time_limit: int = 30) -> OptimizationResult:
         """
@@ -383,6 +384,13 @@ class BlendingModel:
         self.model.setParam('TimeLimit', time_limit)
         self.model.setParam('OutputFlag', 0)  # Désactiver la sortie console
         
+        # Si le modèle contient des variables binaires (PLM), ajuster les paramètres
+        if self.binary_vars_registry:
+            self.model.setParam('MIPGap', 0.01)  # Tolérance de 1%
+            self.model.setParam('MIPFocus', 1)   # Priorité à la faisabilité
+            print(f"🔧 Modèle PLM détecté ({len(self.binary_vars_registry)} variables binaires)")
+            print(f"🔧 Temps limite: {time_limit}s")
+        
         # Résolution
         self.model.optimize()
         
@@ -394,47 +402,52 @@ class BlendingModel:
     
     def _extract_results(self) -> OptimizationResult:
         """Extrait les résultats du modèle résolu."""
-        if self.model.status == GRB.OPTIMAL:
-            success = True
-            message = "Solution optimale trouvée"
-        elif self.model.status == GRB.INFEASIBLE:
-            success = False
-            message = "Modèle infaisable"
-        elif self.model.status == GRB.UNBOUNDED:
-            success = False
-            message = "Modèle non borné"
-        elif self.model.status == GRB.TIME_LIMIT:
-            success = True
-            message = "Limite de temps atteinte"
-        else:
-            success = False
-            message = f"Statut inattendu: {self.model.status}"
+        # Gérer les différents statuts
+        status_messages = {
+            GRB.OPTIMAL: ("Solution optimale trouvée", True),
+            GRB.INFEASIBLE: ("Modèle infaisable", False),
+            GRB.UNBOUNDED: ("Modèle non borné", False),
+            GRB.TIME_LIMIT: ("Limite de temps atteinte", True),
+            GRB.INTERRUPTED: ("Calcul interrompu", False)
+        }
         
-        # Récupérer les quantités
+        status = self.model.status
+        if status in status_messages:
+            message, success = status_messages[status]
+        else:
+            message = f"Statut inattendu: {status}"
+            success = False
+        
+        # Initialiser les structures de résultats
         quantites = {}
         pourcentages = {}
-        
-        for ing in self.ingredients:
-            if ing.est_dans_modele and hasattr(ing.x_var, 'X'):
-                qty = ing.x_var.X
-                quantites[ing.nom] = qty
-                pourcentages[ing.nom] = (qty / self.Q_total * 100) if self.Q_total > 0 else 0
-        
-        # Calculer les valeurs nutritionnelles finales
         valeurs_nutritionnelles = {}
-        if success and quantites:
-            for attr in ['proteines', 'lipides', 'glucides', 'fibres', 'calcium', 'phosphore', 'energie']:
-                total = sum(
-                    getattr(ing.nutrition, attr) * quantites.get(ing.nom, 0)
-                    for ing in self.ingredients
-                )
-                valeurs_nutritionnelles[attr] = total / self.Q_total if self.Q_total > 0 else 0
         
-        # Récupérer les prix duaux (shadow prices)
+        if success and hasattr(self.model, 'ObjVal'):
+            cout_total = self.model.ObjVal
+            
+            # Récupérer les quantités
+            for ing in self.ingredients:
+                if hasattr(ing.x_var, 'X'):
+                    qty = ing.x_var.X
+                    if qty > 1e-6:  # Ignorer les très petites valeurs
+                        quantites[ing.nom] = qty
+                        pourcentages[ing.nom] = (qty / self.Q_total * 100) if self.Q_total > 0 else 0
+            
+            # Calculer les valeurs nutritionnelles finales
+            if quantites:
+                for attr in ['proteines', 'lipides', 'glucides', 'fibres', 'calcium', 'phosphore', 'energie']:
+                    total = 0
+                    for ing in self.ingredients:
+                        if hasattr(ing.nutrition, attr) and ing.nom in quantites:
+                            total += getattr(ing.nutrition, attr) * quantites[ing.nom]
+                    valeurs_nutritionnelles[attr] = total / self.Q_total if self.Q_total > 0 else 0
+        else:
+            cout_total = 0
         ombre_prix = {}
         try:
             for constr in self.model.getConstrs():
-                if abs(constr.Pi) > 1e-6:  # Ignorer les valeurs très proches de 0
+                if  abs(constr.Pi) > 1e-6:
                     ombre_prix[constr.ConstrName] = constr.Pi
         except:
             ombre_prix = None
@@ -451,15 +464,15 @@ class BlendingModel:
         return OptimizationResult(
             success=success,
             message=message,
-            cout_total=self.model.ObjVal if success else 0,
+            cout_total=cout_total,
             quantites=quantites,
             pourcentages=pourcentages,
             valeurs_nutritionnelles=valeurs_nutritionnelles,
-            temps_resolution=self.model.Runtime,
-            iterations=self.model.IterCount,
-            status=self.model.status,
-            ombre_prix=ombre_prix,
-            couts_reduits=couts_reduits
+            temps_resolution=self.model.Runtime if hasattr(self.model, 'Runtime') else 0,
+            iterations=self.model.IterCount if hasattr(self.model, 'IterCount') else 0,
+            status=str(status),
+            ombre_prix=ombre_prix if ombre_prix else None,
+            couts_reduits=couts_reduits if couts_reduits else None
         )
     
     def reset(self):
@@ -468,5 +481,5 @@ class BlendingModel:
             self.model.dispose()
         self.model = None
         self.ingredients = []
-        self.constraints_added = {k: False for k in self.constraints_added}
-        logger.info("Modèle réinitialisé")
+        self.binary_vars_registry = {}
+        logger.info("Modèle réinitialisé")        

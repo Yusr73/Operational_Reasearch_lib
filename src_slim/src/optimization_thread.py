@@ -52,6 +52,13 @@ class OptimizationThread(QThread):
             self.started.emit()
             self.progress.emit(10, "Initialisation du modèle...")
             
+            # IMPORTANT: Nettoyer les attributs y_var avant de créer le modèle
+            for ing in self.ingredients:
+                if hasattr(ing, 'y_var'):
+                    ing.y_var = None
+                if hasattr(ing, 'x_var'):
+                    ing.x_var = None
+            
             # Créer le modèle
             model = BlendingModel()
             
@@ -67,6 +74,20 @@ class OptimizationThread(QThread):
             # Ajouter les contraintes avancées
             self.progress.emit(40, "Ajout des contraintes avancées...")
             
+            # IMPORTANT: Ajouter d'abord les contraintes qui créent des variables binaires
+            # (min_ingredients) avant celles qui les utilisent (min_proportion)
+            
+            if self.advanced_constraints.get('min_ingredients'):
+                min_count = self.advanced_constraints.get('min_ingredients_count', 3)
+                self.progress.emit(45, f"Ajout contrainte : min {min_count} ingrédients...")
+                model.add_min_different_ingredients(min_count=min_count)
+            
+            if self.advanced_constraints.get('min_proportion'):
+                ingredient_name = self.advanced_constraints.get('min_proportion_ingredient', 'Prémix vitamines')
+                min_percent = self.advanced_constraints.get('min_proportion_percent', 2.0)
+                self.progress.emit(50, f"Ajout contrainte : {ingredient_name} ≥ {min_percent}% si utilisé...")
+                model.add_min_proportion_if_used(ingredient_name, min_percent)
+            
             # Remises par quantité
             if self.advanced_constraints.get('quantity_discount'):
                 ingredient_name = self.advanced_constraints.get('discount_ingredient', 'Maïs')
@@ -75,12 +96,8 @@ class OptimizationThread(QThread):
                     (100, 500, 0.25),  # 100-500 kg à 0.25€/kg
                     (500, 10000, 0.20) # 500+ kg à 0.20€/kg
                 ]
+                self.progress.emit(55, f"Ajout remises pour {ingredient_name}...")
                 model.add_quantity_discount(ingredient_name, discount_levels)
-            
-            # Saisonnalité
-            if self.advanced_constraints.get('seasonal'):
-                season = self.advanced_constraints.get('season', 'ete')
-                model.add_seasonal_constraints(season)
             
             # Balance énergétique
             if self.advanced_constraints.get('energy_balance'):
@@ -88,19 +105,25 @@ class OptimizationThread(QThread):
                     'glucides': (0.4, 0.6),
                     'lipides': (0.2, 0.4)
                 }
+                self.progress.emit(60, "Ajout balance énergétique...")
                 model.add_energy_balance_constraints(ratios)
             
             # Palatabilité
             if self.advanced_constraints.get('palatability'):
+                self.progress.emit(65, "Ajout contrainte de palatabilité...")
                 model.add_palatability_constraint()
             
-            # Durée de conservation
-            if self.advanced_constraints.get('shelf_life'):
-                model.add_shelf_life_constraint(min_antioxidants=50)  # 50 mg/kg
+            # Résoudre avec plus de temps pour PLM
+            self.progress.emit(70, "Résolution avec Gurobi...")
             
-            # Résoudre
-            self.progress.emit(60, "Résolution avec Gurobi...")
-            result = model.solve(time_limit=self.time_limit)
+            # Augmenter le temps limite si on a des contraintes PLM
+            time_limit = self.time_limit
+            if (self.advanced_constraints.get('min_ingredients') or 
+                self.advanced_constraints.get('min_proportion') or
+                self.advanced_constraints.get('quantity_discount')):
+                time_limit = max(time_limit, 60)  # Au moins 60s pour PLM
+            
+            result = model.solve(time_limit=time_limit)
             
             self.progress.emit(100, "Optimisation terminée")
             self.finished.emit(result)

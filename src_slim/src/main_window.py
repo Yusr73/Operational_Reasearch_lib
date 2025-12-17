@@ -414,13 +414,13 @@ class MainWindow(QMainWindow):
         self.req_table.setRowCount(7)
         
         nutrients = [
-            ("Protéines", 180, 220),
-            ("Lipides", 30, 60),
-            ("Glucides", 500, 700),
-            ("Fibres", 20, 50),
-            ("Calcium", 8, 12),
-            ("Phosphore", 5, 8),
-            ("Énergie (kcal/kg)", 2800, 3200)
+            ("Protéines", 0, 222220),
+            ("Lipides", 0, 622220),
+            ("Glucides", 0, 2222200),
+            ("Fibres", 0, 5222220),
+            ("Calcium", 0, 122222),
+            ("Phosphore", 0, 822222),
+            ("Énergie (kcal/kg)", 0, 322200)
         ]
         
         for row, (nutrient, min_val, max_val) in enumerate(nutrients):
@@ -457,18 +457,7 @@ class MainWindow(QMainWindow):
         constraints_layout.addWidget(self.cb_discount)
         
         # 2. Saisonnalité
-        season_layout = QHBoxLayout()
-        self.cb_seasonal = QCheckBox("Disponibilité saisonnière")
-        self.cb_seasonal.setToolTip("Certains ingrédients disponibles selon la saison")
-        season_layout.addWidget(self.cb_seasonal)
-        
-        season_layout.addWidget(QLabel("Saison:"))
-        self.combo_season = QComboBox()
-        self.combo_season.addItems(["Été", "Hiver"])
-        season_layout.addWidget(self.combo_season)
-        
-        season_layout.addStretch()
-        constraints_layout.addLayout(season_layout)
+       
         
         # 3. Balance énergétique
         self.cb_energy = QCheckBox("Balance énergétique (40-60% glucides, 20-40% lipides)")
@@ -481,10 +470,16 @@ class MainWindow(QMainWindow):
         constraints_layout.addWidget(self.cb_palatability)
         
         # 5. Durée de conservation
-        self.cb_shelf_life = QCheckBox("Durée de conservation longue (>6 mois)")
-        self.cb_shelf_life.setToolTip("Niveau minimal d'antioxydants requis")
-        constraints_layout.addWidget(self.cb_shelf_life)
         
+        self.cb_min_ingredients = QCheckBox("Au moins 3 ingrédients différents dans le mélange")
+        self.cb_min_ingredients.setToolTip("Évite la dépendance à trop peu de matières premières")
+
+        self.cb_min_proportion = QCheckBox("Si vitamines utilisées, au moins 2% du mélange")
+        self.cb_min_proportion.setToolTip("Assure un niveau minimum de complémentation")
+
+# Ajoutez-les à l'interface :
+        constraints_layout.addWidget(self.cb_min_ingredients)
+        constraints_layout.addWidget(self.cb_min_proportion)
         # Explications
         explanation = QLabel(
             "⚠️ Ces contraintes utilisent des variables binaires (PLM) et "
@@ -584,34 +579,41 @@ class MainWindow(QMainWindow):
                 min_val = float(self.req_table.item(row, 1).text())
                 max_val = float(self.req_table.item(row, 2).text())
                 
-                requirements[nutrient.split()[0].lower()] = (min_val, max_val)
+                nutrient_name = nutrient.split()[0].lower()
+                if nutrient_name == 'protéines':
+                   nutrient_name = 'proteines'
+                elif nutrient_name == 'énergie':
+                   nutrient_name = 'energie'
+                requirements[nutrient_name] = (min_val, max_val)
             except (AttributeError, ValueError):
                 continue
         
         return requirements
     
     def get_advanced_constraints(self) -> Dict[str, Any]:
-        """Récupère la configuration des contraintes avancées."""
-        constraints = {}
-        
-        if self.cb_discount.isChecked():
-            constraints['quantity_discount'] = True
-            constraints['discount_ingredient'] = 'Maïs'
-        
-        if self.cb_seasonal.isChecked():
-            constraints['seasonal'] = True
-            constraints['season'] = 'ete' if self.combo_season.currentText() == 'Été' else 'hiver'
-        
-        if self.cb_energy.isChecked():
-            constraints['energy_balance'] = True
-        
-        if self.cb_palatability.isChecked():
-            constraints['palatability'] = True
-        
-        if self.cb_shelf_life.isChecked():
-            constraints['shelf_life'] = True
-        
-        return constraints
+       constraints = {}
+       
+       if self.cb_discount.isChecked():
+           constraints['quantity_discount'] = True
+           constraints['discount_ingredient'] = 'Maïs'  # Spécifier l'ingrédient
+       
+       if self.cb_energy.isChecked():
+           constraints['energy_balance'] = True
+       
+       if self.cb_palatability.isChecked():
+           constraints['palatability'] = True
+       
+       # NOUVEAUX - avec valeurs par défaut
+       if self.cb_min_ingredients.isChecked():
+           constraints['min_ingredients'] = True
+           constraints['min_ingredients_count'] = 3  # Valeur par défaut
+       
+       if self.cb_min_proportion.isChecked():
+           constraints['min_proportion'] = True
+           constraints['min_proportion_ingredient'] = 'Prémix vitamines'
+           constraints['min_proportion_percent'] = 2.0
+       
+       return constraints
     
     def start_optimization(self):
         """Démarre le processus d'optimisation dans un thread séparé."""
@@ -721,7 +723,7 @@ class MainWindow(QMainWindow):
         total_kg = sum(result.quantites.values())
         for nom, qty in result.quantites.items():
             pourcent = (qty / total_kg * 100) if total_kg > 0 else 0
-            if qty > 0.001:  # > 1g
+            if qty > 0.001:  
                 self.results_text.append(f"  {nom:20} {qty:7.2f} kg ({pourcent:5.1f}%)")
         
         self.results_text.append("\n🥗 VALEURS NUTRITIONNELLES (g/kg):")
@@ -731,12 +733,130 @@ class MainWindow(QMainWindow):
             self.results_text.append(f"  {nutriment:15} {valeur:7.2f}")
         
         # Afficher les prix duaux (shadow prices)
-        if result.ombre_prix:
-            self.results_text.append("\n📈 PRIX DUALS (contraintes actives):")
+        self.results_text.append("\n📈 ANALYSE DE SENSIBILITÉ (Prix duaux):")
+        self.results_text.append("="*60)
+        
+        if result.ombre_prix and len(result.ombre_prix) > 0:
+            # Grouper par type de contrainte
+            contraintes_actives = {}
+            
+            for nom, prix in result.ombre_prix.items():
+                # Identifier le type
+                if 'quantite_totale' in nom:
+                    type_ = "QUANTITÉ TOTALE"
+                    interpretation = f"Coût marginal de production: {prix:.4f} €/kg"
+                    contraintes_actives[type_] = (nom, prix, interpretation)
+                
+                elif 'palatabilite' in nom:
+                    type_ = "PALATABILITÉ"
+                    interpretation = f"Coût pour améliorer le goût: {prix:.4f} €/unité"
+                    contraintes_actives[type_] = (nom, prix, interpretation)
+                
+                elif 'min_' in nom:
+                    nutriment = nom.replace('min_', '')
+                    type_ = f"MIN {nutriment.upper()}"
+                    interpretation = f"Coût de l'exigence minimale: {prix:.4f} €/g"
+                    contraintes_actives[type_] = (nom, prix, interpretation)
+                
+                elif 'max_' in nom:
+                    nutriment = nom.replace('max_', '')
+                    type_ = f"MAX {nutriment.upper()}"
+                    interpretation = f"Gain si on relâche la limite: {-prix:.4f} €/g"
+                    contraintes_actives[type_] = (nom, prix, interpretation)
+                
+                elif 'glucides_ratio' in nom or 'lipides_ratio' in nom:
+                    type_ = "BALANCE ÉNERGÉTIQUE"
+                    interpretation = f"Coût du ratio: {prix:.4f} €/%"
+                    contraintes_actives[type_] = (nom, prix, interpretation)
+            
+            # Afficher de façon organisée
+            self.results_text.append("\n🔍 CONTRAINTES ACTIVES (liantes):")
             self.results_text.append("-"*40)
-            for constr, prix in result.ombre_prix.items():
-                if abs(prix) > 1e-3:
-                    self.results_text.append(f"  {constr:30} {prix:7.3f} €/unité")
+            
+            for type_, (nom, prix, interpretation) in contraintes_actives.items():
+                self.results_text.append(f"  {type_:25} {prix:8.4f} €/unit")
+                self.results_text.append(f"     → {interpretation}")
+            
+            self.results_text.append(f"\n  Total: {len(contraintes_actives)} contrainte(s) active(s)")
+            
+        else:
+            self.results_text.append("\n⚠️  AUCUNE CONTRAINTE ACTIVE")
+            self.results_text.append("-"*40)
+            self.results_text.append("Toutes les contraintes sont non-liantes (relâchables sans coût)")
+            self.results_text.append("→ La solution est à l'intérieur de tous les intervalles")
+        
+        # SECTION CONTRAINTES NON ACTIVES
+        self.results_text.append("\n🔍 CONTRAINTES NON ACTIVES (non liantes):")
+        self.results_text.append("-"*40)
+        
+        # Lister les contraintes nutritionnelles qui pourraient être actives
+        contraintes_nutrition = ['proteines', 'lipides', 'glucides', 'fibres', 'calcium', 'phosphore']
+        
+        for nut in contraintes_nutrition:
+            min_active = f"min_{nut}" in [c for c in result.ombre_prix.keys()] if result.ombre_prix else False
+            max_active = f"max_{nut}" in [c for c in result.ombre_prix.keys()] if result.ombre_prix else False
+            
+            if not min_active and not max_active:
+                # Vérifier la valeur actuelle
+                valeur = result.valeurs_nutritionnelles.get(nut, 0)
+                
+                # Trouver les bornes (à partir de votre interface)
+                # Pour l'exemple, on met des bornes fictives
+                min_borne = 0
+                max_borne = 1000
+                
+                if valeur > min_borne + 10 and valeur < max_borne - 10:
+                    self.results_text.append(f"  {nut:15} : {valeur:6.1f} g/kg (loin des bornes)")
+                else:
+                    self.results_text.append(f"  {nut:15} : {valeur:6.1f} g/kg")
+        
+        # SECTION INTERPRÉTATION
+        self.results_text.append("\n💡 INTERPRÉTATION:")
+        self.results_text.append("-"*40)
+        
+        if result.ombre_prix and 'quantite_totale' in result.ombre_prix:
+            prix = result.ombre_prix['quantite_totale']
+            self.results_text.append(f"• Coût marginal de production: {prix:.3f} €/kg")
+            self.results_text.append(f"  → Produire 1 kg de plus coûterait {prix:.3f} €")
+        
+        if result.ombre_prix and any('palatabilite' in k for k in result.ombre_prix.keys()):
+            for k, v in result.ombre_prix.items():
+                if 'palatabilite' in k:
+                    self.results_text.append(f"• Améliorer le goût coûte: {v:.3f} €/unité d'indice")
+                    self.results_text.append(f"  → Rendre +1 unité plus sucré coûte {v:.3f} €")
+                    break
+        
+        self.results_text.append("\n📊 RÉSUMÉ DES COÛTS RÉDUITS:")
+        self.results_text.append("-"*40)
+        
+        if result.couts_reduits and len(result.couts_reduits) > 0:
+            # Ingrédients NON utilisés mais intéressants
+            ingredients_non_utilises = []
+            
+            for nom, cout in result.couts_reduits.items():
+                if nom.startswith('x_') and cout > 0.01:  # Seuil significatif
+                    ing_nom = nom[2:].replace('_', ' ')
+                    ingredients_non_utilises.append((ing_nom, cout))
+            
+            if ingredients_non_utilises:
+                self.results_text.append("Ingrédients qui deviendraient intéressants si moins chers:")
+                for ing_nom, cout in sorted(ingredients_non_utilises, key=lambda x: x[1]):
+                    self.results_text.append(f"  • {ing_nom:20} : -{cout:.3f} €/kg")
+                    self.results_text.append(f"    (actuellement trop cher de {cout:.3f} €/kg)")
+            else:
+                self.results_text.append("Tous les ingrédients intéressants sont déjà utilisés")
+        else:
+            self.results_text.append("Solution dégénérée ou toutes variables en base")                
+        
+        # Afficher les coûts réduits
+        if result.couts_reduits is not None and result.couts_reduits:
+            self.results_text.append("\n📉 COÛTS RÉDUITS (variables hors base):")
+            self.results_text.append("-"*40)
+            for var, cout in result.couts_reduits.items():
+                if abs(cout) > 1e-3:
+                    self.results_text.append(f"  {var:30} {cout:7.3f} €/kg")
+        else:
+            self.results_text.append("\n📉 COÛTS RÉDUITS: Toutes les variables sont en base")
     
     def export_results(self):
         """Exporte les résultats vers un fichier."""
