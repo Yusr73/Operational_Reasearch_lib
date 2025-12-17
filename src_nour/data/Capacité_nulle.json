@@ -1,0 +1,68 @@
+{
+  "name": "Capacit\u00e9_nulle",
+  "arcs": {
+    "A->B": {
+      "mode": "R",
+      "C0": 0,
+      "c_var": 10,
+      "c_fix": 500,
+      "Ymax": 100
+    },
+    "B->C": {
+      "mode": "R",
+      "C0": 0,
+      "c_var": 12,
+      "c_fix": 400,
+      "Ymax": 100
+    },
+    "A->C": {
+      "mode": "F",
+      "C0": 0,
+      "c_var": 8,
+      "c_fix": 300,
+      "Ymax": 50
+    },
+    "C->D": {
+      "mode": "F",
+      "C0": 0,
+      "c_var": 9,
+      "c_fix": 350,
+      "Ymax": 50
+    },
+    "B->D": {
+      "mode": "R",
+      "C0": 0,
+      "c_var": 20,
+      "c_fix": 600,
+      "Ymax": 60
+    }
+  },
+  "OD": {
+    "A->D": {
+      "D": 120,
+      "P": 1000,
+      "allowed": [
+        "R",
+        "F"
+      ]
+    },
+    "A->C": {
+      "D": 40,
+      "P": 1000,
+      "allowed": [
+        "R",
+        "F"
+      ]
+    },
+    "B->D": {
+      "D": 30,
+      "P": 1000,
+      "allowed": [
+        "R"
+      ]
+    }
+  },
+  "budget_R": 1000,
+  "budget_F": 1000,
+  "use_budget": false
+}

@@ -1,0 +1,68 @@
+{
+  "name": "Budget_limit\u00e9",
+  "arcs": {
+    "A->B": {
+      "mode": "R",
+      "C0": 50,
+      "c_var": 20,
+      "c_fix": 500,
+      "Ymax": 100
+    },
+    "B->C": {
+      "mode": "R",
+      "C0": 50,
+      "c_var": 25,
+      "c_fix": 400,
+      "Ymax": 100
+    },
+    "A->C": {
+      "mode": "F",
+      "C0": 40,
+      "c_var": 30,
+      "c_fix": 300,
+      "Ymax": 50
+    },
+    "C->D": {
+      "mode": "F",
+      "C0": 40,
+      "c_var": 35,
+      "c_fix": 350,
+      "Ymax": 50
+    },
+    "B->D": {
+      "mode": "R",
+      "C0": 30,
+      "c_var": 40,
+      "c_fix": 600,
+      "Ymax": 60
+    }
+  },
+  "OD": {
+    "A->D": {
+      "D": 120,
+      "P": 1000,
+      "allowed": [
+        "R",
+        "F"
+      ]
+    },
+    "A->C": {
+      "D": 40,
+      "P": 1000,
+      "allowed": [
+        "R",
+        "F"
+      ]
+    },
+    "B->D": {
+      "D": 30,
+      "P": 1000,
+      "allowed": [
+        "R"
+      ]
+    }
+  },
+  "budget_R": 100,
+  "budget_F": 50,
+  "use_budget": true
+}
