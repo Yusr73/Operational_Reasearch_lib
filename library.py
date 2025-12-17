@@ -1,7 +1,6 @@
 import sys
 import os
 import importlib.util
-from src_nour.main import MainWindow #nour
 
 
 # Get the base directory
@@ -180,12 +179,14 @@ class ORLibraryWindow(QWidget):
         #Problem 1 button
         if problem_num == 1:
             try:
-                from src_nour.main import MainWindow  # Import the class directly from main.py
-                self.nour_window = MainWindow()       # Create instance
-                self.nour_window.show()               # Show GUI
+                from src_nour.launch import MainWindow as TargetWindow
+                self.nour_window = TargetWindow()
+                self.nour_window.show()
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Cannot open Project 1:\n{str(e)}")
             return
+
+        
 
         
 
