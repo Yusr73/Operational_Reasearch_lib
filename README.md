@@ -34,6 +34,8 @@ Operational_Reasearch_lib/
 # Install dependencies for all projects
 pip install -r src_yosr/requirements.txt
 pip install -r src_adem/requirements.txt
+pip install -r src_nour/requirements.txt
+
 # Add others as needed
 ```
 
