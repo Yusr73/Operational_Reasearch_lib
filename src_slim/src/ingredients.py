@@ -48,6 +48,7 @@ class Ingredient:
     # Variables Gurobi (initialisées plus tard)
     x_var: Optional[gp.Var] = None
     est_dans_modele: bool = False
+    y_var: Optional[gp.Var] = None 
     
     def __post_init__(self):
         """Initialisation après création."""
@@ -83,7 +84,7 @@ class Ingredient:
     def from_dict(cls, data: Dict) -> 'Ingredient':
         """Crée un ingrédient à partir d'un dictionnaire."""
         nutrition = NutritionalValues(**data.get('nutrition', {}))
-        return cls(
+        ingredient = cls(
             nom=data['nom'],
             cout=data['cout'],
             nutrition=nutrition,
@@ -95,3 +96,8 @@ class Ingredient:
             disponibilite_ete=data.get('disponibilite_ete'),
             disponibilite_hiver=data.get('disponibilite_hiver')
         )
+        
+        # MAINTENANT initialiser y_var
+        ingredient.y_var = None
+        return ingredient
+    

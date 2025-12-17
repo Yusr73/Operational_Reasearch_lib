@@ -229,13 +229,13 @@ def load_default_requirements() -> Dict[str, Tuple[float, float]]:
 def create_sample_requirements() -> Dict[str, Tuple[float, float]]:
     """Crée des exigences nutritionnelles exemple."""
     return {
-        'proteines': (180.0, 220.0),      # g/kg
-        'lipides': (30.0, 60.0),          # g/kg
-        'glucides': (500.0, 700.0),       # g/kg
-        'fibres': (20.0, 50.0),           # g/kg
-        'calcium': (8.0, 12.0),           # g/kg
-        'phosphore': (5.0, 8.0),          # g/kg
-        'energie': (2800.0, 3200.0)       # kcal/kg
+        'proteines': (0.0, 2222220.0),      # g/kg
+        'lipides': (0.0, 2222260.0),          # g/kg
+        'glucides': (0.0, 2222700.0),       # g/kg
+        'fibres': (0.0, 52220.0),           # g/kg
+        'calcium': (0.0, 122222.0),           # g/kg
+        'phosphore': (0.0, 222228.0),          # g/kg
+        'energie': (0.0, 3222200.0)       # kcal/kg
     }
 
 
