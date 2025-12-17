@@ -53,6 +53,12 @@ Click on any problem button to launch the corresponding application.
 
 Each project can also be run standalone:
 
+### Problem 1 (Nour)
+```bash
+cd src_nour/src
+py -3.13 main.py
+```
+
 ### Problem 2 (Yosr)
 ```bash
 cd src_yosr/src
