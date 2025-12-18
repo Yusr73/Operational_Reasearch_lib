@@ -1,0 +1,103 @@
+{
+  "name": "Démonstration du Risque de Change",
+  "description": "Test spécial pour montrer l'impact du risque de change sur les transferts inter-devises",
+  "network_data": {
+    "nodes": [
+      "BNP_EUR",
+      "SocieteGenerale_EUR",
+      "HSBC_GBP",
+      "Barclays_GBP",
+      "JPMorgan_USD",
+      "Citibank_USD",
+      "UBS_CHF",
+      "CreditSuisse_CHF"
+    ],
+    "arcs": [
+      {
+        "source": "BNP_EUR",
+        "destination": "HSBC_GBP",
+        "cost": 1.0,
+        "capacity": 1000000,
+        "comment": "Transfert EUR->GBP - Devise différente"
+      },
+      {
+        "source": "BNP_EUR",
+        "destination": "SocieteGenerale_EUR",
+        "cost": 1.0,
+        "capacity": 1000000,
+        "comment": "Transfert EUR->EUR - Même devise"
+      },
+      {
+        "source": "BNP_EUR",
+        "destination": "JPMorgan_USD",
+        "cost": 1.0,
+        "capacity": 1000000,
+        "comment": "Transfert EUR->USD - Devise différente"
+      },
+      {
+        "source": "HSBC_GBP",
+        "destination": "Barclays_GBP",
+        "cost": 1.0,
+        "capacity": 1000000,
+        "comment": "Transfert GBP->GBP - Même devise"
+      },
+      {
+        "source": "HSBC_GBP",
+        "destination": "UBS_CHF",
+        "cost": 1.0,
+        "capacity": 1000000,
+        "comment": "Transfert GBP->CHF - Devise différente"
+      },
+      {
+        "source": "JPMorgan_USD",
+        "destination": "Citibank_USD",
+        "cost": 1.0,
+        "capacity": 1000000,
+        "comment": "Transfert USD->USD - Même devise"
+      },
+      {
+        "source": "JPMorgan_USD",
+        "destination": "CreditSuisse_CHF",
+        "cost": 1.0,
+        "capacity": 1000000,
+        "comment": "Transfert USD->CHF - Devise différente"
+      },
+      {
+        "source": "UBS_CHF",
+        "destination": "CreditSuisse_CHF",
+        "cost": 1.0,
+        "capacity": 1000000,
+        "comment": "Transfert CHF->CHF - Même devise"
+      },
+      {
+        "source": "SocieteGenerale_EUR",
+        "destination": "Barclays_GBP",
+        "cost": 1.0,
+        "capacity": 1000000,
+        "comment": "Transfert EUR->GBP - Devise différente"
+      },
+      {
+        "source": "Citibank_USD",
+        "destination": "BNP_EUR",
+        "cost": 1.0,
+        "capacity": 1000000,
+        "comment": "Transfert USD->EUR - Devise différente"
+      }
+    ]
+  },
+  "supply_demand": {
+    "BNP_EUR": 3000000,
+    "SocieteGenerale_EUR": 1000000,
+    "HSBC_GBP": 0,
+    "Barclays_GBP": -2000000,
+    "JPMorgan_USD": 0,
+    "Citibank_USD": -1000000,
+    "UBS_CHF": 0,
+    "CreditSuisse_CHF": -1000000
+  },
+  "options": {
+    "include_risk": true,
+    "multi_currency": true,
+    "time_constraints": false
+  }
+}
