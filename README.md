@@ -11,7 +11,7 @@ Operational_Reasearch_lib/
 ├── src_adem/              # Problem 4: Vertex Cover (Adem) ✓
 ├── src_nour/              # Problem 1: Planning of road and railway routes(Nour)
 ├── src_nour_elhouda/      # Problem 3: (Nour Elhouda)
-└── src_slim/              # Problem 5: (Slim)
+└── src_slim/              # Problem 5: la Nutrition Animale(Slim)
 ```
 
 ## Problems
@@ -20,7 +20,7 @@ Operational_Reasearch_lib/
 2. **Problem 2**: Assign connections without interference (Yosr) ✓
 3. **Problem 3**: Optimization of fund transfers between banks/currencies
 4. **Problem 4**: Determine the minimal number of monitoring nodes required (Adem) ✓
-5. **Problem 5**: Description here
+5. **Problem 5**: la Nutrition Animale
 
 ## Installation
 
