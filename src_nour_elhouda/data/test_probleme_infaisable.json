@@ -1,0 +1,21 @@
+{
+  "name": "Test Problème Infaisable",
+  "description": "Test avec offre insuffisante pour couvrir la demande (devrait échouer)",
+  "network_data": {
+    "nodes": ["BNP_EUR", "SG_USD", "HSBC_GBP"],
+    "arcs": [
+      {"source": "BNP_EUR", "destination": "SG_USD", "cost": 1.5, "capacity": 500000},
+      {"source": "SG_USD", "destination": "HSBC_GBP", "cost": 2.0, "capacity": 300000}
+    ]
+  },
+  "supply_demand": {
+    "BNP_EUR": 300000,
+    "SG_USD": 0,
+    "HSBC_GBP": -1000000
+  },
+  "options": {
+    "include_risk": false,
+    "multi_currency": false,
+    "time_constraints": false
+  }
+}
