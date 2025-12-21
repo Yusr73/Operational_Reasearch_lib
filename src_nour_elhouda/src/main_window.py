@@ -886,20 +886,90 @@ class MainWindow(QMainWindow):
     
     def load_test(self):
         """Charge un fichier de test depuis le dossier data"""
-        # Créer le dossier data s'il n'existe pas
-        data_dir = "data"
-        if not os.path.exists(data_dir):
-            os.makedirs(data_dir)
+        # === AJOUTER CE DÉBOGAGE ===
+        import os
+        import sys
+        
+        print("\n" + "="*50)
+        print("DÉBOGAGE load_test()")
+        print("="*50)
+        
+        # 1. Répertoire courant
+        current_dir = os.getcwd()
+        print(f"1. Répertoire courant (os.getcwd()): {current_dir}")
+        
+        # 2. Emplacement du fichier main_window.py
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        print(f"2. Script (main_window.py) dans: {script_dir}")
+        
+        # 3. Plusieurs chemins possibles vers data
+        possible_paths = [
+            "data",  # Chemin relatif courant
+            os.path.join(current_dir, "data"),  # Chemin absolu depuis répertoire courant
+            os.path.join(script_dir, "data"),  # data dans même dossier que main_window.py
+            os.path.join(script_dir, "..", "data"),  # data dans dossier parent
+            os.path.join(script_dir, "..", "..", "data"),  # data dans parent du parent
+            os.path.join(os.path.dirname(script_dir), "data"),  # data dans dossier parent de script
+        ]
+        
+        # 4. Chercher le bon chemin
+        data_dir = None
+        for i, path in enumerate(possible_paths):
+            abs_path = os.path.abspath(path)
+            exists = os.path.exists(abs_path)
+            print(f"\n3.{i+1}. Test chemin: {abs_path}")
+            print(f"   Existe? {exists}")
+            
+            if exists:
+                # Vérifier si c'est un dossier et s'il contient des .json
+                if os.path.isdir(abs_path):
+                    files = [f for f in os.listdir(abs_path) if f.endswith('.json')]
+                    print(f"   Nombre de fichiers .json: {len(files)}")
+                    if len(files) > 0:
+                        data_dir = abs_path
+                        print(f"   ✓ Dossier data VALIDE trouvé!")
+                        print(f"   Fichiers: {files}")
+                        break
+                else:
+                    print(f"   ✗ Ce n'est pas un dossier")
+            else:
+                print(f"   ✗ Dossier n'existe pas")
+        
+        print("\n" + "="*50)
+        
+        # Si aucun dossier data valide trouvé
+        if data_dir is None:
+            print("Aucun dossier data valide trouvé, création...")
+            
+            # Essayer de créer dans le dossier parent de main_window.py
+            data_dir = os.path.join(os.path.dirname(script_dir), "data")
+            print(f"Création du dossier: {data_dir}")
+            
+            if not os.path.exists(data_dir):
+                os.makedirs(data_dir)
+                print(f"Dossier créé: {data_dir}")
+            
             QMessageBox.information(self, "Dossier créé", 
-                                   f"Le dossier '{data_dir}' a été créé. Ajoutez-y vos fichiers JSON de test.")
+                                f"Le dossier '{data_dir}' a été créé.\nAjoutez-y vos fichiers JSON de test.")
             return
         
-        # Lister les fichiers JSON disponibles
-        test_files = [f for f in os.listdir(data_dir) if f.endswith('.json')]
+        print(f"\n4. Utilisation du dossier data: {data_dir}")
+        print("="*50 + "\n")
+        # === FIN DU DÉBOGAGE ===
         
-        if not test_files:
-            QMessageBox.warning(self, "Aucun test", 
-                               f"Aucun fichier JSON trouvé dans le dossier '{data_dir}'")
+        # Lister les fichiers JSON disponibles
+        try:
+            test_files = [f for f in os.listdir(data_dir) if f.endswith('.json')]
+            
+            if not test_files:
+                print(f"ATTENTION: Dossier trouvé mais vide: {data_dir}")
+                QMessageBox.warning(self, "Aucun test", 
+                                f"Aucun fichier JSON trouvé dans le dossier:\n{data_dir}")
+                return
+        except Exception as e:
+            print(f"ERREUR lecture dossier: {e}")
+            QMessageBox.critical(self, "Erreur", 
+                            f"Erreur lors de la lecture du dossier '{data_dir}':\n{str(e)}")
             return
         
         # Créer un menu pour sélectionner le test
@@ -907,7 +977,7 @@ class MainWindow(QMainWindow):
         
         for test_file in test_files:
             action = menu.addAction(test_file)
-            action.setData(test_file)
+            action.setData(os.path.join(data_dir, test_file))
         
         # Afficher le menu
         pos = self.test_btn.mapToGlobal(self.test_btn.rect().bottomLeft())
@@ -915,7 +985,7 @@ class MainWindow(QMainWindow):
         
         if action:
             test_file = action.data()
-            self.load_test_file(os.path.join(data_dir, test_file))
+            self.load_test_file(test_file)
     
     def load_test_file(self, file_path):
         """Charge un fichier de test spécifique"""
