@@ -10,7 +10,7 @@ Operational_Reasearch_lib/
 ├── src_yosr/              # Problem 2: Network Assignment (Yosr)
 ├── src_adem/              # Problem 4: Vertex Cover (Adem) ✓
 ├── src_nour/              # Problem 1: Planning of road and railway routes(Nour)
-├── src_nour_elhouda/      # Problem 3: Système d’Optimisation des Transferts Financiers - Flux à Coût Minimum (Nour Elhouda)✓
+├── src_nour_elhouda/      # Problem 3: Optimization of fund transfers between banks/currencies(Nour Elhouda)
 └── src_slim/              # Problem 5: la Nutrition Animale(Slim)
 ```
 
