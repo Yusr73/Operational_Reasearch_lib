@@ -1,0 +1,68 @@
+{
+  "name": "Scenario_2_Mixed_Invest",
+  "arcs": {
+    "A->B": {
+      "mode": "R",
+      "C0": 100,
+      "c_var": 10,
+      "c_fix": 500,
+      "Ymax": 120
+    },
+    "B->C": {
+      "mode": "R",
+      "C0": 80,
+      "c_var": 12,
+      "c_fix": 400,
+      "Ymax": 150
+    },
+    "A->C": {
+      "mode": "F",
+      "C0": 60,
+      "c_var": 8,
+      "c_fix": 300,
+      "Ymax": 80
+    },
+    "C->D": {
+      "mode": "F",
+      "C0": 70,
+      "c_var": 9,
+      "c_fix": 350,
+      "Ymax": 60
+    },
+    "B->D": {
+      "mode": "R",
+      "C0": 0,
+      "c_var": 20,
+      "c_fix": 600,
+      "Ymax": 90
+    }
+  },
+  "OD": {
+    "A->D": {
+      "D": 120,
+      "P": 500,
+      "allowed": [
+        "R",
+        "F"
+      ]
+    },
+    "A->C": {
+      "D": 40,
+      "P": 500,
+      "allowed": [
+        "R",
+        "F"
+      ]
+    },
+    "B->D": {
+      "D": 30,
+      "P": 500,
+      "allowed": [
+        "R"
+      ]
+    }
+  },
+  "budget_R": 3000,
+  "budget_F": 2000,
+  "use_budget": true
+}

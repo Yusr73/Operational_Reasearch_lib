@@ -3,6 +3,12 @@ from PyQt5.QtWidgets import QTabWidget
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.lines import Line2D
+from PyQt5.QtGui import QIcon, QPixmap
+import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ICON_DIR = os.path.join(BASE_DIR, "icons")
+
 
 import json
 from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout,
@@ -26,9 +32,9 @@ default_arcs = {
 }
 
 default_OD = {
-    ('A','D'): {'D':120.0, 'allowed':['R','F'], 'P':1000.0},
-    ('A','C'): {'D':40.0,  'allowed':['R','F'], 'P':1000.0},
-    ('B','D'): {'D':30.0,  'allowed':['R'],     'P':1000.0}
+    ('A','D'): {'D':120.0, 'allowed':['R','F'], 'P':500.0},
+    ('A','C'): {'D':40.0,  'allowed':['R','F'], 'P':500.0},
+    ('B','D'): {'D':30.0,  'allowed':['R'],     'P':500.0}
 }
 
 budget_mode_default = {'R':3000.0, 'F':2000.0}
@@ -282,6 +288,25 @@ class MainWindow(QWidget):
 
         self._build_ui()
 
+    def icon_label(self, icon_path, text, size=20):
+        container = QWidget()
+        layout = QHBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(6)
+
+        icon_lbl = QLabel()
+        icon_lbl.setPixmap(QPixmap(icon_path).scaled(
+            size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation
+        ))
+
+        text_lbl = QLabel(text)
+
+        layout.addWidget(icon_lbl)
+        layout.addWidget(text_lbl)
+        layout.addStretch()
+
+        return container
+
     def _build_ui(self):
         # Apply global style only for main window widgets
         self.setStyleSheet("""
@@ -309,7 +334,7 @@ class MainWindow(QWidget):
                 background-color: #f78154;        /* slightly darker pink on hover */
             }
             QTableWidget {
-                background-color: #white;        /* orange background inside table */
+                background-color: white;        /* orange background inside table */
                 gridline-color: #b4436c;          /* pink gridlines */
                 border-radius: 5px;
             }
@@ -340,20 +365,35 @@ class MainWindow(QWidget):
 
         # JSON buttons + budget
         h = QHBoxLayout()
-        btn_load = QPushButton('Charger JSON');
-        btn_load.clicked.connect(self.load_json);
+
+
+        btn_load = QPushButton("Charger JSON")
+        btn_load.setIcon(QIcon(os.path.join(ICON_DIR, "load.png")))
+        btn_load.clicked.connect(self.load_json)
         h.addWidget(btn_load)
-        btn_save = QPushButton('Sauvegarder JSON');
-        btn_save.clicked.connect(self.save_json);
+
+        btn_save = QPushButton("Sauvegarder JSON")
+        btn_save.setIcon(QIcon(os.path.join(ICON_DIR, "save.png")))
+        btn_save.clicked.connect(self.save_json)
         h.addWidget(btn_save)
+
+
         self.chk_budget = QCheckBox('Utiliser budgets');
         h.addWidget(self.chk_budget)
-        h.addWidget(QLabel('Budget des voies routières R :'))
+        #h.addWidget(QLabel('Budget des voies routières R :'))
+        h.addWidget(
+            self.icon_label(os.path.join(ICON_DIR, "car.png"), "Budget des voies routières R :")
+        )
+
         self.spin_R = QSpinBox();
         self.spin_R.setRange(0, 10000000);
         self.spin_R.setValue(int(budget_mode_default['R']));
         h.addWidget(self.spin_R)
-        h.addWidget(QLabel('Budget des voies ferroviaires F:'))
+        #h.addWidget(QLabel('Budget des voies ferroviaires F:'))
+        h.addWidget(
+            self.icon_label(os.path.join(ICON_DIR, "train.png"), "Budget des voies ferroviaires F :")
+        )
+
         self.spin_F = QSpinBox();
         self.spin_F.setRange(0, 10000000);
         self.spin_F.setValue(int(budget_mode_default['F']));
@@ -524,21 +564,149 @@ class MainWindow(QWidget):
 
     def show_solution(self, sol):
         if 'error' in sol:
-            QMessageBox.critical(self,'Solver Error', sol['error'])
+            QMessageBox.critical(self, 'Solver Error', sol['error'])
             return
+
         self.last_solution = sol
-        # Show popup
-        summary = f"Objective: {sol['objective']:.2f}\n\n"
-        summary += "Demande insatisfaite:\n"
+
+        # ----------------------------
+        # 1) Calcul des composantes
+        # ----------------------------
+
+        # Pénalités de demande insatisfaite
+        penalty_cost = 0.0
         for od in self.OD:
-            summary += f"{od[0]}->{od[1]}: {sol['u'].get(od,0):.2f} / Demand={self.OD[od]['D']}\n"
-        summary += "\nFlux d'arc:\n"
-        for e in self.arcs:
-            total_flow = sum(sol['f'].get((od,e),0) for od in self.OD)
-            summary += f"{e[0]}->{e[1]}: Flux={total_flow:.2f}, Extension={sol['y'].get(e,0):.2f}, Constuit/Extension={sol['z'].get(e,0)}\n"
-        QMessageBox.information(self,'Solution Summary',summary)
+            unmet = sol['u'].get(od, 0)
+            P = self.OD[od]['P']
+
+            # facteur pénalité (R=1, F=2)
+            factors = []
+            for e in self.arcs:
+                if self.arcs[e]['mode'] in self.OD[od]['allowed']:
+                    factors.append(1 if self.arcs[e]['mode'] == 'R' else 2)
+
+            factor = min(factors) if factors else 1
+            penalty_cost += unmet * P * factor
+
+        # Coûts d’investissement
+        invest_cost = sum(
+            self.arcs[e]['c_fix'] * sol['z'].get(e, 0)
+            for e in self.arcs
+        )
+
+        # Coûts d’exploitation (extension)
+        operating_cost = sum(
+            self.arcs[e]['c_var'] * sol['y'].get(e, 0)
+            for e in self.arcs
+        )
+
+        total_obj = sol['objective']
+
+        # ----------------------------
+        # 2) Construction du résumé
+        # ----------------------------
+        summary = f"""
+        <h2 style="color:#b4436c;">Résumé de la solution optimale</h2>
+        <hr>
+
+        <p style="font-size:14px;">
+        <b>Valeur de l’objectif total :</b>
+        <span style="color:#b4436c; font-size:16px;">
+        {total_obj:,.0f}
+        </span>
+        </p>
+
+        <h3 style="color:#34495e;">🧮 Décomposition de l’objectif</h3>
+        <ul>
+          <li>
+            <span style="color:#b4436c;">
+            <b>Pénalités de demande insatisfaite :</b> {penalty_cost:,.0f}
+            </span>
+          </li>
+          <li>
+            <span style="color:#4d9078;">
+            <b>Coûts d’investissement :</b> {invest_cost:,.0f}
+            </span>
+          </li>
+          <li>
+            <span style="color:#f78154;">
+            <b>Coûts d’exploitation :</b> {operating_cost:,.0f}
+            </span>
+          </li>
+        </ul>
+
+        <h3 style="color:#34495e;">🚫 Demande non satisfaite</h3>
+        <ul>
+        """
+        for od in self.OD:
+            unmet = sol['u'].get(od, 0)
+            demand = self.OD[od]['D']
+            percent = (unmet / demand * 100) if demand > 0 else 0
+
+            # couleur selon gravité
+            if percent == 0:
+                color = "#4d9078"  # vert
+                icon = "✅"
+            elif percent < 50:
+                color = "#f78154"  # orange
+                icon = "⚠️"
+            else:
+                color = "#b4436c"  # rouge
+                icon = "🚫"
+
+            summary += f"""
+            <li>
+              <span style="color:{color};">
+              {icon} <b>{od[0]} → {od[1]}</b> :
+              {unmet:.0f} / {demand:.0f} ({percent:.0f}%)
+              </span>
+            </li>
+            """
+        summary += """
+        </ul>
+        <hr>
+        <p style="font-style:italic; color:#555;">
+        La valeur élevée de l’objectif est principalement due aux pénalités de demande non satisfaite,
+        indiquant une capacité insuffisante du réseau existant.
+        </p>
+        """
+        msg = QMessageBox(self)
+        msg.setWindowTitle("Solution Summary")
+        msg.setIcon(QMessageBox.Information)
+        msg.setTextFormat(Qt.RichText)  # 🔴 TRÈS IMPORTANT
+        msg.setText(summary)
+        msg.exec()
+
+        #summary = ""
+        #summary += "📊 RÉSUMÉ DE LA SOLUTION OPTIMALE\n"
+        #summary += "──────────────────────────────\n"
+        #summary += f"Valeur de l’objectif total : {total_obj:,.0f}\n\n"
+
+        #summary += "🧮 Décomposition de l’objectif :\n"
+        #summary += f"• Pénalités de demande insatisfaite : {penalty_cost:,.0f}\n"
+        #summary += f"• Coûts d’investissement : {invest_cost:,.0f}\n"
+        #summary += f"• Coûts d’exploitation : {operating_cost:,.0f}\n\n"
+
+        #summary += "🚫 Demande non satisfaite :\n"
+        #for od in self.OD:
+        #    unmet = sol['u'].get(od, 0)
+        #    demand = self.OD[od]['D']
+        #   percent = (unmet / demand * 100) if demand > 0 else 0
+        #    summary += (
+        #        f"• {od[0]} → {od[1]} : "
+        #        f"{unmet:.0f} / {demand:.0f} ({percent:.0f}%)\n"
+        #    )
+
+        # ----------------------------
+        # 3) Affichage
+        # ----------------------------
+        #QMessageBox.information(self, "Solution Summary", summary)
+
+        #Mise à jour du graphe
         self.plot_tab.draw_network(self.arcs, self.OD, sol)
         self.tabs.setCurrentWidget(self.plot_tab)
+
+
 
     def load_json(self):
         fname, _ = QFileDialog.getOpenFileName(self, 'Open JSON', '', 'JSON Files (*.json)')
