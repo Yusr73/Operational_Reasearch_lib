@@ -33,6 +33,7 @@ Operational_Reasearch_lib/
 ```bash
 # Install dependencies for all projects
 pip install -r src_yosr/requirements.txt
+pip install -r src_nour_elhouda/requirements.txt
 pip install -r src_adem/requirements.txt
 pip install -r src_nour/requirements.txt
 
