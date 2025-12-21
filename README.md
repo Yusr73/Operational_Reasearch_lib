@@ -10,7 +10,7 @@ Operational_Reasearch_lib/
 ├── src_yosr/              # Problem 2: Network Assignment (Yosr)
 ├── src_adem/              # Problem 4: Vertex Cover (Adem) ✓
 ├── src_nour/              # Problem 1: Planning of road and railway routes(Nour)
-├── src_nour_elhouda/      # Problem 3: (Nour Elhouda)
+├── src_nour_elhouda/      # Problem 3: Système d’Optimisation des Transferts Financiers - Flux à Coût Minimum (Nour Elhouda)✓
 └── src_slim/              # Problem 5: la Nutrition Animale(Slim)
 ```
 
@@ -18,7 +18,7 @@ Operational_Reasearch_lib/
 
 1. **Problem 1**: Planning of road and railway routes (Nour) ✓
 2. **Problem 2**: Assign connections without interference (Yosr) ✓
-3. **Problem 3**: Optimization of fund transfers between banks/currencies
+3. **Problem 3**: Optimization of interbank financial transfers by solving a minimum-cost flow problem (Nour El Houda) ✓
 4. **Problem 4**: Determine the minimal number of monitoring nodes required (Adem) ✓
 5. **Problem 5**: la Nutrition Animale
 
@@ -65,6 +65,12 @@ cd src_yosr/src
 python3 main.py
 ```
 
+### Problem 3 (Nour El Houda)
+```bash
+cd src_nour_elhouda/src
+python main.py
+```
+
 ### Problem 4 (Adem)
 ```bash
 cd src_adem
@@ -103,5 +109,6 @@ python3 test_adem_integration.py
 ## Contributors
 - Nour: Problem 1 (Planning of road and railway routes)
 - Yosr: Problem 2 (Network Assignment)
+- Nour El Houda: Problem 3 (Optimization System for Interbank Financial Transfers: a Minimum-Cost Flow Approach)
 - Adem: Problem 4 (Surveillance Network / Vertex Cover)
 - [Add other contributors]
